@@ -12,6 +12,7 @@ import numpy as np
 import csv
 import os
 import urllib.request
+from config import data_path
 
 def calculate_distance(vector1, vector2):
     """
@@ -54,9 +55,9 @@ class FaceRecognition(object):
         self.detector = dlib.get_frontal_face_detector()
         self.sp = dlib.shape_predictor(self.predictor_path)
         self.facerec = dlib.face_recognition_model_v1(self.face_rec_model_path)
-        self.data_path = "modules/face_server/data/data.csv"
-        if not os.path.exists("modules/face_server/data/"):
-            os.makedirs("modules/face_server/data/")
+        self.data_path = os.path.join(data_path, "data.csv")
+        if not os.path.exists(data_path):
+            os.makedirs(data_path)
         self.register = {}
 
     def register_load(self):
