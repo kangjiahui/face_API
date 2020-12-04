@@ -13,6 +13,9 @@ import csv
 import os
 import urllib.request
 from config import data_path
+from modules.utils.utils import image_to_base64
+from PIL import Image, ImageDraw, ImageFont
+
 
 def calculate_distance(vector1, vector2):
     """
@@ -38,6 +41,16 @@ def download_from_url(filepath, save_dir):
     save_path = os.path.join(save_dir, filename)
     urllib.request.urlretrieve(filepath, save_path)
     print('\nSuccessfully downloaded to {}'.format(save_path))
+
+
+def cv2_img_add_text(img, text, left, top, text_color=(255, 255, 255), text_size=20):
+    if isinstance(img, np.ndarray):  # 判断是否OpenCV图片类型
+        img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(img)
+    font_text = ImageFont.truetype(
+        "fonts/simsun.ttc", text_size, encoding="utf-8")
+    draw.text((left, top), text, text_color, font=font_text)
+    return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
 
 class FaceRecognition(object):
@@ -74,18 +87,22 @@ class FaceRecognition(object):
             for line in reader:
                 if line:
                     print(line)
-                    feature = np.fromstring(eval(line[1]))
-                    self.register[line[0]] = np.array(feature)
+                    feature = np.fromstring(eval(line[3]))
+                    self.register[line[0]] = [line[1], line[2], np.array(feature)]
 
-    def face_register(self, _image_path, _name):
+    def face_register(self, _image_path, _info):
         """
         Registers only one picture.
         :param _image_path: refers to a picture path which contains one and only one face
-        :param _name: the name for the registering face
+        :param _info: a list presents person's all info, include: user_id, group_id, user_info
+                    E.X.:["10098440", "staff", "康佳慧_女_算法工程师"]
         :return: None, results will be written into data_path.
         """
         image = cv2.imread(_image_path)
-        if _name not in self.register.keys():
+        user_id, group_id, user_info = _info
+        if user_id in self.register.keys():
+            print("id:{} already exists".format(user_id))
+        else:
             faces = self.detector(image, 1)
             if len(faces) != 1:
                 print("There must be one and only one face in the image!")
@@ -95,11 +112,13 @@ class FaceRecognition(object):
             face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip)).tostring()
             with open(self.data_path, "a+") as _data:
                 writer = csv.writer(_data)
-                writer.writerow([_name, face_descriptor])
+                writer.writerow([user_id, group_id, user_info, face_descriptor])
             self.register_load()
+            print(self.register)
 
     def face_register_batch(self, _image_path):
         """
+        TODO: This function is not in use. Info structure to be changed.
         All pictures in the path could be register at once. Name refers to filename.
         :param _image_path: str, contains one or more pictures, register name will be the picture's filename
         :return: None
@@ -149,15 +168,17 @@ class FaceRecognition(object):
             face_chip = dlib.get_face_chip(image, shape)
             face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip))
             distance = 1
-            name = ""
+            matched_id = ""
             for key in self.register:
-                dist_tmp = calculate_distance(face_descriptor, self.register[key])
+                dist_tmp = calculate_distance(face_descriptor, self.register[key][2])
                 if dist_tmp < distance:
                     distance = dist_tmp
-                    name = key
+                    matched_id = key
             if distance < thresh:
-                result.append({"box": bbox, "name": name, "distance": distance})
+                result.append({"user_id": matched_id, "group_id": self.register[matched_id][0],
+                               "user_info": self.register[matched_id][1], "box": bbox, "distance": distance})
                 cv2.rectangle(image, (int(face.left()), int(face.top())), (int(face.right()), int(face.bottom())),
                               (255, 255, 255), 2)
-                cv2.putText(image, name, (int(face.left()), int(face.top())), 0, 1, (255, 255, 255), 2)
-        return result
+                image = cv2_img_add_text(image, self.register[matched_id][1], int(face.left()), int(face.top()))
+        encoded_img = image_to_base64(image)
+        return result, encoded_img

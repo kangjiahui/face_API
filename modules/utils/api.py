@@ -14,15 +14,16 @@ print("FaceRcognition created!")
 face.register_load()
 
 
-def face_register(_image_path, _name):
+def face_register(_image_path, _info):
     """
     Registers only one picture.
     :param _image_path: refers to a picture path which contains one and only one face
-    :param _name: the name for the registering face
+    :param _info: a list presents person's all info, include: user_id, group_id, user_info
+                    E.X.:[10098440, "staff", "康佳慧_女_算法工程师"]
     :return: None, results will be written into data_path.
     """
     try:
-        face.face_register(_image_path, _name)
+        face.face_register(_image_path, _info)
         result_json = json.dumps({"result": 0, "message": "SUCCESS"})
     except Exception as e:
         print(e)
@@ -33,7 +34,8 @@ def face_register(_image_path, _name):
 
 def face_register_batch(_image_path):
     """
-     All pictures in the path could be register at once. Name refers to filename.
+    TODO: This function is not in use. Info structure to be changed.
+    All pictures in the path could be register at once. Name refers to filename.
     :param _image_path: str, contains one or more pictures, register name will be the picture's filename
     :return: None
     """
@@ -58,10 +60,10 @@ def search_identity(image=None, path=None, thresh=0.4):
     """
     try:
         if path:
-            faces_info = face.search_identity(path=path, thresh=thresh)
+            faces_info, encoded_img = face.search_identity(path=path, thresh=thresh)
         else:
-            faces_info = face.search_identity(image=image, thresh=thresh)
-        result_json = json.dumps({"result": 0, "message": "SUCCESS", "faces": faces_info})
+            faces_info, encoded_img = face.search_identity(image=image, thresh=thresh)
+        result_json = json.dumps({"result": 0, "message": "SUCCESS", "image": encoded_img, "faces": faces_info}, ensure_ascii=False,)
     except Exception as e:
         print(e)
         msg = str(e)
