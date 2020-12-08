@@ -9,12 +9,14 @@
 import dlib
 import cv2
 import numpy as np
-import csv
+import pymysql
 import os
 import urllib.request
 from config import data_path
 from modules.utils.utils import image_to_base64
 from PIL import Image, ImageDraw, ImageFont
+
+conn = pymysql.connect('localhost', user="root", passwd="6", db="users")
 
 
 def calculate_distance(vector1, vector2):
@@ -55,100 +57,73 @@ def cv2_img_add_text(img, text, left, top, text_color=(255, 255, 255), text_size
 
 class FaceRecognition(object):
     def __init__(self):
-        self.predictor_path = os.path.join(os.getcwd(), 'modules/face_server/params', 'shape_predictor_68_face_landmarks.dat')
-        self.face_rec_model_path = os.path.join(os.getcwd(), 'modules/face_server/params', 'dlib_face_recognition_resnet_model_v1.dat')
+        self.predictor_path = os.path.join(os.getcwd(), 'modules/face_server/params',
+                                           'shape_predictor_68_face_landmarks.dat')
+        self.face_rec_model_path = os.path.join(os.getcwd(), 'modules/face_server/params',
+                                                'dlib_face_recognition_resnet_model_v1.dat')
         if not os.path.exists('modules/face_server/params'):
             os.makedirs('modules/face_server/params')
         if not os.path.exists(self.predictor_path):
-            download_from_url("http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2", os.path.join(os.getcwd(), 'modules/face_server/params'))
+            download_from_url("http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2",
+                              os.path.join(os.getcwd(), 'modules/face_server/params'))
             os.system('bzip2 -d modules/face_server/params/shape_predictor_68_face_landmarks.dat.bz2')
         if not os.path.exists(self.face_rec_model_path):
-            download_from_url("http://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2", os.path.join(os.getcwd(), 'modules/face_server/params'))
+            download_from_url("http://dlib.net/files/dlib_face_recognition_resnet_model_v1.dat.bz2",
+                              os.path.join(os.getcwd(), 'modules/face_server/params'))
             os.system('bzip2 -d modules/face_server/params/dlib_face_recognition_resnet_model_v1.dat.bz2')
         self.detector = dlib.get_frontal_face_detector()
         self.sp = dlib.shape_predictor(self.predictor_path)
         self.facerec = dlib.face_recognition_model_v1(self.face_rec_model_path)
-        self.data_path = os.path.join(data_path, "data.csv")
-        if not os.path.exists(data_path):
-            os.makedirs(data_path)
-        self.register = {}
+        self.conn = pymysql.connect('localhost', user="root", passwd="6")
+        self.cursor = self.conn.cursor()
 
-    def register_load(self):
-        """
-        When database changed, this function should be called to reload newest register.
-        :return: None
-        """
-        self.register = {}
-        if not os.path.exists(self.data_path):
-            file = open(self.data_path, 'w')
-            file.close()
-        with open(self.data_path, "r") as data:
-            reader = csv.reader(data)
-            for line in reader:
-                if line:
-                    print(line)
-                    feature = np.fromstring(eval(line[3]))
-                    self.register[line[0]] = [line[1], line[2], np.array(feature)]
+    def new_database(self):
+        # 创建pythonBD数据库
+        self.cursor.execute('drop DATABASE if EXISTS face_rec;')
+        self.cursor.execute('CREATE DATABASE face_rec;')
+        self.cursor.execute('use face_rec;')
+        self.cursor.execute('drop table if EXISTS users;')
+        print("========Database face_rec created!========")
+        sql = """CREATE TABLE users(
+        user_id VARCHAR(20) not null PRIMARY KEY,
+        group_id VARCHAR(100),
+        user_info VARCHAR(100) not null,
+        face_feature blob not null,
+        modify_date datetime
+        );"""
+        self.cursor.execute(sql)
+        print('========Table users created!========')
 
     def face_register(self, _image_path, _info):
         """
         Registers only one picture.
         :param _image_path: refers to a picture path which contains one and only one face
-        :param _info: a list presents person's all info, include: user_id, group_id, user_info
-                    E.X.:["10098440", "staff", "康佳慧_女_算法工程师"]
+        :param _info: a json data E.X.:{"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧"}
         :return: None, results will be written into data_path.
         """
         image = cv2.imread(_image_path)
-        user_id, group_id, user_info = _info
-        if user_id in self.register.keys():
-            print("id:{} already exists".format(user_id))
-        else:
-            faces = self.detector(image, 1)
-            if len(faces) != 1:
-                print("There must be one and only one face in the image!")
-                return 0
-            shape = self.sp(image, faces[0])
-            face_chip = dlib.get_face_chip(image, shape)
-            face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip)).tostring()
-            with open(self.data_path, "a+") as _data:
-                writer = csv.writer(_data)
-                writer.writerow([user_id, group_id, user_info, face_descriptor])
-            self.register_load()
-            print(self.register)
+        user_id = _info["user_id"]
+        group_id = _info["group_id"]
+        user_info = _info["user_info"]
+        # get the face's feature
+        faces = self.detector(image, 1)
+        if len(faces) != 1:
+            print("There must be one and only one face in the image!")
+            return 0
+        shape = self.sp(image, faces[0])
+        face_chip = dlib.get_face_chip(image, shape)
+        face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip)).tostring()
+        with open(self.data_path, "a+") as _data:
+            writer = csv.writer(_data)
+            writer.writerow([user_id, group_id, user_info, face_descriptor])
+        self.register_load()
+        print(self.register)
 
-    def face_register_batch(self, _image_path):
-        """
-        TODO: This function is not in use. Info structure to be changed.
-        All pictures in the path could be register at once. Name refers to filename.
-        :param _image_path: str, contains one or more pictures, register name will be the picture's filename
-        :return: None
-        """
-        _register = {}
-        _image_list = []
-        for root, dirs, files in os.walk(_image_path):
-            for file in files:
-                if os.path.splitext(file)[1] == '.jpg':
-                    _image_list.append(os.path.join(root, file))
-        print(_image_list)
+    def face_delete(self, user_id):
+        pass
 
-        for path in _image_list:
-            image = cv2.imread(path)
-            name = os.path.basename(path).split('.')[0]
-            if name not in self.register.keys():
-                faces = self.detector(image, 1)
-                if len(faces) != 1:
-                    print("There must be one and only one face in the image{}!".format(path))
-                    continue
-                shape = self.sp(image, faces[0])
-                face_chip = dlib.get_face_chip(image, shape)
-                face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip)).tostring()
-                _register[name] = face_descriptor
-        if _register:
-            with open(self.data_path, "a+") as _data:
-                writer = csv.writer(_data)
-                for key in _register:
-                    writer.writerow([key, _register[key]])
-            self.register_load()
+    def face_update(self, user_id):
+        pass
 
     def search_identity(self, image=None, path=None, thresh=0.4):
         """
@@ -182,3 +157,7 @@ class FaceRecognition(object):
                 image = cv2_img_add_text(image, self.register[matched_id][1], int(face.left()), int(face.top()))
         encoded_img = image_to_base64(image)
         return result, encoded_img
+
+    def release(self):
+        self.cursor.close()  # 先关闭游标
+        self.conn.close()  # 再关闭数据库连接
