@@ -13,10 +13,10 @@ import pymysql
 import os
 import urllib.request
 from config import data_path
-from modules.utils.utils import image_to_base64
+from modules.utils.utils import image_to_base64, base64_to_image
 from PIL import Image, ImageDraw, ImageFont
 
-conn = pymysql.connect('localhost', user="root", passwd="6", db="users")
+# conn = pymysql.connect('localhost', user="root", passwd="6", db="users")
 
 
 def calculate_distance(vector1, vector2):
@@ -83,25 +83,26 @@ class FaceRecognition(object):
         self.cursor.execute('CREATE DATABASE face_rec;')
         self.cursor.execute('use face_rec;')
         self.cursor.execute('drop table if EXISTS users;')
-        print("========Database face_rec created!========")
+        print('========Database "face_rec" created!========')
         sql = """CREATE TABLE users(
         user_id VARCHAR(20) not null PRIMARY KEY,
         group_id VARCHAR(100),
         user_info VARCHAR(100) not null,
         face_feature blob not null,
-        modify_date datetime
+        latest_modify_time datetime
         );"""
         self.cursor.execute(sql)
-        print('========Table users created!========')
+        print('========Table "users" created!========')
 
-    def face_register(self, _image_path, _info):
+    def face_register(self, _image_base64, _info):
         """
         Registers only one picture.
-        :param _image_path: refers to a picture path which contains one and only one face
-        :param _info: a json data E.X.:{"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧"}
+        :param _image_base64: image encoded in base64
+        :param _info: a diction E.X.:{"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧"}
         :return: None, results will be written into data_path.
         """
-        image = cv2.imread(_image_path)
+        self.cursor.execute('use face_rec;')
+        image = base64_to_image(_image_base64)
         user_id = _info["user_id"]
         group_id = _info["group_id"]
         user_info = _info["user_info"]
@@ -113,11 +114,11 @@ class FaceRecognition(object):
         shape = self.sp(image, faces[0])
         face_chip = dlib.get_face_chip(image, shape)
         face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip)).tostring()
-        with open(self.data_path, "a+") as _data:
-            writer = csv.writer(_data)
-            writer.writerow([user_id, group_id, user_info, face_descriptor])
-        self.register_load()
-        print(self.register)
+
+        statement = """INSERT INTO users (user_id, group_id, user_info, face_feature, latest_modify_time) 
+                    VALUES (%s, %s, %s, %s, NOW());"""
+        self.cursor.execute(statement, (user_id, group_id, user_info, face_descriptor))
+        self.conn.commit()
 
     def face_delete(self, user_id):
         pass
@@ -133,6 +134,7 @@ class FaceRecognition(object):
         :param thresh: distance between face and matched face should be smaller than thresh
         :return:list[dict], in format of [{"box": bbox, "name": name, "distance": distance}, ]
         """
+        self.cursor.execute('use face_rec;')
         if path:
             image = cv2.imread(path)  # if path and image coexist, then path will cover image
         faces = self.detector(image, 1)
@@ -144,17 +146,24 @@ class FaceRecognition(object):
             face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip))
             distance = 1
             matched_id = ""
-            for key in self.register:
-                dist_tmp = calculate_distance(face_descriptor, self.register[key][2])
+            self.cursor.execute("SELECT user_id, face_feature from users;")
+            users_in_sql = self.cursor.fetchall()
+            for user_id, face_feature in users_in_sql:
+                face_feature = np.fromstring(face_feature)
+                dist_tmp = calculate_distance(face_descriptor, face_feature)
                 if dist_tmp < distance:
                     distance = dist_tmp
-                    matched_id = key
+                    matched_id = user_id
             if distance < thresh:
-                result.append({"user_id": matched_id, "group_id": self.register[matched_id][0],
-                               "user_info": self.register[matched_id][1], "box": bbox, "distance": distance})
-                cv2.rectangle(image, (int(face.left()), int(face.top())), (int(face.right()), int(face.bottom())),
-                              (255, 255, 255), 2)
-                image = cv2_img_add_text(image, self.register[matched_id][1], int(face.left()), int(face.top()))
+                statement = """SELECT user_id, group_id, user_info from users where user_id=%s;"""
+                self.cursor.execute(statement, matched_id)
+                user_data = self.cursor.fetchall()
+                for user_id, group_id, user_info in user_data:
+                    result.append({"user_id": user_id, "group_id": group_id, "user_info": user_info,
+                                   "box": bbox, "distance": distance})
+                    cv2.rectangle(image, (int(face.left()), int(face.top())), (int(face.right()), int(face.bottom())),
+                                  (255, 255, 255), 2)
+                    image = cv2_img_add_text(image, user_info, int(face.left()), int(face.top()))
         encoded_img = image_to_base64(image)
         return result, encoded_img
 
