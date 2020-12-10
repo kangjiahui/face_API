@@ -22,8 +22,20 @@ def face_register(_json):
     try:
         # _json = json.loads(_json)
         _image_base64 = _json.pop("user_image")
+        print(type(_image_base64))
         _info = _json
         face.face_register(_image_base64, _info)
+        result_json = json.dumps({"result": 0, "message": "SUCCESS"})
+    except Exception as e:
+        print(e)
+        msg = str(e)
+        result_json = json.dumps({"result": -1, "message": msg})
+    return result_json
+
+
+def face_delete(user_id):
+    try:
+        face.face_delete(user_id)
         result_json = json.dumps({"result": 0, "message": "SUCCESS"})
     except Exception as e:
         print(e)

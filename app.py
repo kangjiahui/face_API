@@ -11,8 +11,8 @@ import cv2
 
 app = Flask(__name__)
 CORS(app, resources=r'/*')
-# q = Queue(10)
-# print(f"  q.id={id(q)}")
+q = Queue(10)
+print(f"  q.id={id(q)}")
 
 
 def show_in_video(q_):
@@ -44,8 +44,8 @@ def show_in_video(q_):
     video_capture.release()
 
 
-# t1 = threading.Thread(target=show_in_video, args=(q,))
-# t1.start()
+t1 = threading.Thread(target=show_in_video, args=(q,))
+t1.start()
 
 
 # run_thread()
@@ -57,21 +57,21 @@ def show_in_video(q_):
 #         deal_video_no.start()
 
 
-# # 人脸识别运行
-# @app.route('/getImgFlow', methods=["GET"])
-# def face_recog():
-#     # global q
-#     if request.method == 'GET':
-#         print("==api=run=== ", id(q), q.qsize())
-#
-#         result = q.get()
-#         print("==api=run11------- ", id(q), q.qsize())
-#         print("==api=run===result ", result)
-#         if result:
-#             print(result)
-#             return result
-#         else:
-#             return json.dumps({"result": 1, "message": "failed"})
+# 人脸识别运行
+@app.route('/getImgFlow', methods=["GET"])
+def face_recog():
+    # global q
+    if request.method == 'GET':
+        print("==api=run=== ", id(q), q.qsize())
+
+        result = q.get()
+        print("==api=run11------- ", id(q), q.qsize())
+        print("==api=run===result ", result)
+        if result:
+            print(result)
+            return result
+        else:
+            return json.dumps({"result": 1, "message": "failed"})
 
 
 # 人脸信息注册
@@ -89,8 +89,8 @@ def uploadInfo():
     user_info = request.form['user_info']
     print("data received!")
     input_data = {"user_id": user_id, "group_id": group_id, "user_info": user_info, "user_image": image_base64}
-    print("json data complete!")
-    # face_register(input_data)
+    print(input_data)
+    face_register(input_data)
     return '1'
 
 

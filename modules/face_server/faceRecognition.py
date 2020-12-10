@@ -121,7 +121,10 @@ class FaceRecognition(object):
         self.conn.commit()
 
     def face_delete(self, user_id):
-        pass
+        self.cursor.execute('use face_rec;')
+        statement = """delete from users where user_id=%s;"""
+        self.cursor.execute(statement, user_id)
+        self.conn.commit()
 
     def face_update(self, user_id):
         pass
