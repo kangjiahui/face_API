@@ -13,18 +13,17 @@ face = FaceRecognition()
 print("FaceRcognition created!")
 
 
-def face_register(_json):
+def face_register(input_dict):
     """
     Registers only one picture.
-    :param _json: e.x. {"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧", "user_image": "……"}
+    :param input_dict: e.x. {"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧", "user_image": "……"}
     :return: None, results will be written into data_path.
     """
     try:
         # _json = json.loads(_json)
-        _image_base64 = _json.pop("user_image")
+        _image_base64 = input_dict.pop("user_image")
         print(type(_image_base64))
-        _info = _json
-        face.face_register(_image_base64, _info)
+        face.face_register(_image_base64, input_dict)
         result_json = json.dumps({"result": 0, "message": "SUCCESS"})
     except Exception as e:
         print(e)
