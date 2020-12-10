@@ -11,18 +11,19 @@ from modules.face_server.faceRecognition import FaceRecognition
 
 face = FaceRecognition()
 print("FaceRcognition created!")
-face.register_load()
 
 
-def face_register(_image_path, _name):
+def face_register(input_dict):
     """
     Registers only one picture.
-    :param _image_path: refers to a picture path which contains one and only one face
-    :param _name: the name for the registering face
+    :param input_dict: e.x. {"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧", "user_image": "……"}
     :return: None, results will be written into data_path.
     """
     try:
-        face.face_register(_image_path, _name)
+        # _json = json.loads(_json)
+        _image_base64 = input_dict.pop("user_image")
+        print(type(_image_base64))
+        face.face_register(_image_base64, input_dict)
         result_json = json.dumps({"result": 0, "message": "SUCCESS"})
     except Exception as e:
         print(e)
@@ -31,14 +32,9 @@ def face_register(_image_path, _name):
     return result_json
 
 
-def face_register_batch(_image_path):
-    """
-     All pictures in the path could be register at once. Name refers to filename.
-    :param _image_path: str, contains one or more pictures, register name will be the picture's filename
-    :return: None
-    """
+def face_delete(user_id):
     try:
-        face.face_register_batch(_image_path)
+        face.face_delete(user_id)
         result_json = json.dumps({"result": 0, "message": "SUCCESS"})
     except Exception as e:
         print(e)
@@ -47,7 +43,7 @@ def face_register_batch(_image_path):
     return result_json
 
 
-def search_identity(image=None, path=None, thresh=0.4):
+def search_identity(image=None, path=None, thresh=0.6):
     """
     Serch all faces in one image in the register of n faces' features.
     If path and image coexist, then path will cover image.
@@ -58,12 +54,25 @@ def search_identity(image=None, path=None, thresh=0.4):
     """
     try:
         if path:
-            faces_info = face.search_identity(path=path, thresh=thresh)
+            faces_info, encoded_img = face.search_identity(path=path, thresh=thresh)
         else:
-            faces_info = face.search_identity(image=image, thresh=thresh)
-        result_json = json.dumps({"result": 0, "message": "SUCCESS", "faces": faces_info})
+            faces_info, encoded_img = face.search_identity(image=image, thresh=thresh)
+        result_json = json.dumps({"result": 0, "message": "SUCCESS", "image": encoded_img, "faces": faces_info},
+                                 ensure_ascii=False)
     except Exception as e:
         print(e)
         msg = str(e)
         result_json = json.dumps({"result": -1, "message": msg})
     return result_json
+
+
+def new_database():
+    try:
+        face.new_database()
+        result_json = json.dumps({"result": 0, "message": "SUCCESS"})
+    except Exception as e:
+        print(e)
+        msg = str(e)
+        result_json = json.dumps({"result": -1, "message": msg})
+    return result_json
+
