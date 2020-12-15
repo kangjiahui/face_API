@@ -22,7 +22,6 @@ def face_register(input_dict):
     try:
         # _json = json.loads(_json)
         _image_base64 = input_dict.pop("user_image")
-        print(type(_image_base64))
         face.face_register(_image_base64, input_dict)
         result_json = json.dumps({"result": 0, "message": "SUCCESS"})
     except Exception as e:
@@ -36,6 +35,34 @@ def face_delete(user_id):
     try:
         face.face_delete(user_id)
         result_json = json.dumps({"result": 0, "message": "SUCCESS"})
+    except Exception as e:
+        print(e)
+        msg = str(e)
+        result_json = json.dumps({"result": -1, "message": msg})
+    return result_json
+
+
+def face_update(input_dict):
+    """
+        Reregisters only one picture.
+        :param input_dict: e.x. {"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧", "user_image": "……"}
+        :return: None, results will be written into data_path.
+    """
+    try:
+        _image_base64 = input_dict.pop("user_image")
+        face.face_update(_image_base64, input_dict)
+        result_json = json.dumps({"result": 0, "message": "SUCCESS"})
+    except Exception as e:
+        print(e)
+        msg = str(e)
+        result_json = json.dumps({"result": -1, "message": msg})
+    return result_json
+
+
+def face_get_info(page_num=1, max_rows=100):
+    try:
+        result = face.face_get_info(page_num, max_rows)
+        result_json = json.dumps({"result": 0, "message": "SUCCESS", "user_data": result}, ensure_ascii=False)
     except Exception as e:
         print(e)
         msg = str(e)
