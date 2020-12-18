@@ -16,6 +16,7 @@ from config import data_path
 from modules.utils.utils import image_to_base64, base64_to_image
 from PIL import Image, ImageDraw, ImageFont
 
+
 # conn = pymysql.connect('localhost', user="root", passwd="6", db="users")
 
 
@@ -45,18 +46,20 @@ def download_from_url(filepath, save_dir):
     print('\nSuccessfully downloaded to {}'.format(save_path))
 
 
-def cv2_img_add_text(img, text, left, top, text_color=(255, 255, 255), text_size=20):
+def cv2_img_add_text(img, text, left, top, text_color=(255, 255, 0), text_size=30):
     if isinstance(img, np.ndarray):  # 判断是否OpenCV图片类型
         img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     draw = ImageDraw.Draw(img)
     font_text = ImageFont.truetype(
         "fonts/simsun.ttc", text_size, encoding="utf-8")
-    draw.text((left, top), text, text_color, font=font_text)
+    draw.text((left, top - 30), text, text_color, font=font_text)
     return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
 
 class FaceRecognition(object):
     def __init__(self):
+        if not os.path.exists('register_img'):
+            os.makedirs('register_img')
         self.predictor_path = os.path.join(os.getcwd(), 'modules/face_server/params',
                                            'shape_predictor_68_face_landmarks.dat')
         self.face_rec_model_path = os.path.join(os.getcwd(), 'modules/face_server/params',
@@ -89,6 +92,7 @@ class FaceRecognition(object):
         group_id VARCHAR(100),
         user_info VARCHAR(100) not null,
         face_feature blob not null,
+        image_path VARCHAR(100) not null,
         latest_modify_time datetime
         );"""
         self.cursor.execute(sql)
@@ -99,13 +103,15 @@ class FaceRecognition(object):
         Registers only one picture.
         :param _image_base64: image encoded in base64
         :param _info: a diction E.X.:{"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧"}
-        :return: None, results will be written into data_path.
+        :return: None, results will be written into mysql database
         """
         self.cursor.execute('use face_rec;')
         image = base64_to_image(_image_base64)
         user_id = _info["user_id"]
         group_id = _info["group_id"]
         user_info = _info["user_info"]
+        image_path = os.path.join(os.getcwd(), 'register_img', user_id + ".jpg")
+        cv2.imwrite(image_path, image)
         # get the face's feature
         faces = self.detector(image, 1)
         if len(faces) != 1:
@@ -115,19 +121,61 @@ class FaceRecognition(object):
         face_chip = dlib.get_face_chip(image, shape)
         face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip)).tostring()
 
-        statement = """INSERT INTO users (user_id, group_id, user_info, face_feature, latest_modify_time) 
-                    VALUES (%s, %s, %s, %s, NOW());"""
-        self.cursor.execute(statement, (user_id, group_id, user_info, face_descriptor))
+        statement = """INSERT INTO users (user_id, group_id, user_info, face_feature, image_path, latest_modify_time) 
+                    VALUES (%s, %s, %s, %s, %s, NOW());"""
+        self.cursor.execute(statement, (user_id, group_id, user_info, face_descriptor, image_path))
         self.conn.commit()
 
     def face_delete(self, user_id):
+        """
+        Delete an exact face info by user_id.
+        :param user_id: user_id of the face to be deleted
+        :return: none, face info will be deleted in mysql database
+        """
         self.cursor.execute('use face_rec;')
         statement = """delete from users where user_id=%s;"""
         self.cursor.execute(statement, user_id)
         self.conn.commit()
 
-    def face_update(self, user_id):
-        pass
+    def face_update(self, _image_base64, _info):
+        """
+        Reregisters only one picture.
+        :param _image_base64: image encoded in base64
+        :param _info: a diction E.X.:{"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧"}
+        :return: None, results will be written into mysql database
+        """
+        self.cursor.execute('use face_rec;')
+        image = base64_to_image(_image_base64)
+        user_id = _info["user_id"]
+        group_id = _info["group_id"]
+        user_info = _info["user_info"]
+        image_path = os.path.join(os.getcwd(), 'register_img', user_id + ".jpg")
+        cv2.imwrite(image_path, image)
+        # get the face's feature
+        faces = self.detector(image, 1)
+        if len(faces) != 1:
+            print("There must be one and only one face in the image!")
+            return 0
+        shape = self.sp(image, faces[0])
+        face_chip = dlib.get_face_chip(image, shape)
+        face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip)).tostring()
+        statement = """update users set group_id=%s, user_info=%s, face_feature=%s, image_path=%s, 
+        latest_modify_time=NOW() where user_id=%s;"""
+        self.cursor.execute(statement, (group_id, user_info, face_descriptor, image_path, user_id))
+        self.conn.commit()
+
+    def face_get_info(self, page_num, max_rows):
+        self.cursor.execute('use face_rec;')
+        page_start = (page_num - 1) * max_rows
+        statement = """SELECT user_id, group_id, user_info, image_path, latest_modify_time from users limit %s, %s;"""
+        self.cursor.execute(statement, (page_start, max_rows))
+        user_data = self.cursor.fetchall()
+        result = []
+        for user_id, group_id, user_info, image_path, latest_modify_time in user_data:
+            result.append({"userID": user_id, "userGroup": group_id, "userName": user_info,
+                           "latest_modify_time": str(latest_modify_time),
+                           "userIMG": image_to_base64(cv2.imread(image_path))})
+        return result
 
     def search_identity(self, image=None, path=None, thresh=0.4):
         """
@@ -147,6 +195,7 @@ class FaceRecognition(object):
             shape = self.sp(image, face)
             face_chip = dlib.get_face_chip(image, shape)
             face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip))
+            # print(face_descriptor)
             distance = 1
             matched_id = ""
             self.cursor.execute("SELECT user_id, face_feature from users;")
@@ -165,7 +214,7 @@ class FaceRecognition(object):
                     result.append({"user_id": user_id, "group_id": group_id, "user_info": user_info,
                                    "box": bbox, "distance": distance})
                     cv2.rectangle(image, (int(face.left()), int(face.top())), (int(face.right()), int(face.bottom())),
-                                  (255, 255, 255), 2)
+                                  (0, 255, 255), 2)
                     image = cv2_img_add_text(image, user_info, int(face.left()), int(face.top()))
         encoded_img = image_to_base64(image)
         return result, encoded_img
