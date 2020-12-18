@@ -1,7 +1,4 @@
 import base64
-import threading
-from time import sleep
-
 from flask import Flask, request, jsonify
 from modules.utils.api import *
 from flask_cors import CORS
@@ -11,8 +8,9 @@ import cv2
 
 app = Flask(__name__)
 CORS(app, resources=r'/*')
-q = Queue(3)
-print(f"q.id={id(q)}")
+# q = Queue(3)
+# print(f"q.id={id(q)}")
+
 
 
 def show_in_video(q_):
@@ -145,7 +143,7 @@ def getAllInfo():
 
 
 if __name__ == '__main__':
-    deal_video_no = Process(target=show_in_video, args=(q,))
-    deal_video_no.start()
+    # deal_video_no = Process(target=show_in_video, args=(q,))
+    # deal_video_no.start()
     # app.run(host='0.0.0.0', port=8100, debug=True)
     app.run(host='0.0.0.0', port=8100, debug=True, use_reloader=False)

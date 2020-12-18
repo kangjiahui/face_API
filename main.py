@@ -56,14 +56,14 @@ if __name__ == '__main__':
     # print(res)
 
     # video_file_process()
-    # show_in_video()
+    show_in_video()
 
     # new_database()
     # image = cv2.imread("register_img/t2.jpg")
     # image_64 = image_to_base64(image)
     # face_register({"user_id": "10097508", "group_id": "master", "user_info": "童随兵", "user_image": image_64})
     # face_update({"user_id": "10098441", "group_id": "staff", "user_info": "康佳慧", "user_image": image_64})
-    print(face_get_info())
+    # print(face_get_info())
     # result = search_identity(path='test.jpg')
     # print(result)
 

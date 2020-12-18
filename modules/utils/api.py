@@ -70,7 +70,7 @@ def face_get_info(page_num=1, max_rows=100):
     return result_json
 
 
-def search_identity(image=None, path=None, thresh=0.6):
+def search_identity(image=None, path=None, thresh=0.4):
     """
     Serch all faces in one image in the register of n faces' features.
     If path and image coexist, then path will cover image.
