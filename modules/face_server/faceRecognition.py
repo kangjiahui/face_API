@@ -81,6 +81,10 @@ class FaceRecognition(object):
         self.cursor = self.conn.cursor()
 
     def new_database(self):
+        """
+        Initial a new database. Only execute once before use.
+        :return: None. Database and table will be established.
+        """
         # 创建pythonBD数据库
         self.cursor.execute('drop DATABASE if EXISTS face_rec;')
         self.cursor.execute('CREATE DATABASE face_rec;')
@@ -165,6 +169,14 @@ class FaceRecognition(object):
         self.conn.commit()
 
     def face_get_info(self, page_num, max_rows):
+        """
+        Fetch face_info page by page. You can only fetch one page at once.
+        :param page_num: int, page index
+        :param max_rows: int, how many registered faces in one page
+        :return:list[dict], e.x.
+        [{"userID": "10098440", "userGroup": "staff", "userName": "康佳慧",
+        "latest_modify_time": "2020-12-15 15:15:41", "userIMG": base64_image}, ]
+        """
         self.cursor.execute('use face_rec;')
         page_start = (page_num - 1) * max_rows
         statement = """SELECT user_id, group_id, user_info, image_path, latest_modify_time from users limit %s, %s;"""
