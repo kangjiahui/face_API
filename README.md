@@ -5,7 +5,7 @@
 下载安装[cmake](https://cmake.org/download/)   
 pip安装   `pip install dlib`  
 ### ubuntu系统
-命令安装cmake  `sudo apt install cmake`  
+命令安装cmake   `sudo apt install cmake`  
 pip安装   `pip install dlib`  
 ## 快速启动
 本工程ubuntu下能够自动下载模型参数并解压。   
@@ -18,3 +18,78 @@ pip安装   `pip install dlib`
 运行`websocket_serve.py`  
 ### 本服务端已具备人脸注册、信息删除或修改、已注册人脸信息查询等功能。前端调用对应接口即可
 
+## flask 服务负责数据库增删改查功能
+人脸信息注册  
+@app.route('/uploadInfo', methods=["POST"])  
+人脸更新（有图片更新）  
+@app.route('/updateInfo', methods=["POST"])  
+人脸更新（无图片）  
+@app.route('/updateInfo2', methods=["POST"])  
+人脸删除  
+@app.route('/deleteInfo', methods=["POST"])  
+人脸信息获取  
+@app.route('/getAllInfo', methods=["POST"])  
+
+## websocket负责图像帧实时传输
+start_server = websockets.serve(time, "10.20.50.163", 5678)
+
+## api.py 文档
+Help on module modules.utils.api in modules.utils:
+
+NAME
+
+    modules.utils.api
+
+DESCRIPTION
+
+    File Name：     faceRecognition.py
+    Description :  Instantiate FaceRecognition from faceRecognition.py. Give a clear API for user.
+    Author :       KangJiaHui
+    date：         2020/11/26
+
+FUNCTIONS
+
+    face_delete(user_id)
+        Delete an exact face_info by user_id
+        :param user_id: string e.x. "10098440"
+        :return: None, the face_info will be deleted from database.
+    
+    face_get_info(page_num=1, max_rows=100)
+        Fetch face_info page by page. You can only fetch one page at once.
+        :param page_num: int, page index
+        :param max_rows: int, how many registered faces in one page
+        :return: dict, e.x. {"result": 0, "message": "SUCCESS",
+                            "user_data": [{"userID": "10098440", "userGroup": "staff", "userName": "康佳慧",
+                                            "latest_modify_time": "2020-12-15 15:15:41", "userIMG": base64_image}, ]}
+    
+    face_register(input_dict)
+        Registers only one picture.
+        :param input_dict: e.x. {"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧", "user_image": "……"}
+        :return: None, results will be written into database.
+    
+    face_update(input_dict)
+        Update exist face_info.
+        :param input_dict: e.x. {"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧", "user_image": "……"}
+        :return: None, results will be written into data_path.
+    
+    new_database()
+        Initial a new database. Only execute once before use.
+        :return: None. Database and table will be established.
+    
+    search_identity(image=None, path=None, thresh=0.4)
+        Serch all faces in one image in the register of n faces' features.
+        If path and image coexist, then path will cover image.
+        :param image: numpy.ndarray
+        :param path: str, indicates an image
+        :param thresh: distance between face and matched face should be smaller than thresh
+        :return:dict, in format of
+                {"result": 0, "message": "SUCCESS", "image": encoded_base64_img,
+                "faces":[{"box": bbox, "name": name, "distance": distance}, ]}
+
+DATA
+
+    face = <modules.face_server.faceRecognition.FaceRecognition object>
+
+FILE
+
+    e:\deeplearning\kang\face_api\modules\utils\api.py

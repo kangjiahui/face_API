@@ -12,7 +12,6 @@ CORS(app, resources=r'/*')
 # print(f"q.id={id(q)}")
 
 
-
 def show_in_video(q_):
     # print(f"show_in_video  q.id={}")
     print("===show_in_video=== ", id(q_))
@@ -87,10 +86,6 @@ def uploadInfo():
 def updateInfo():
     file = request.files['user_image']
     image_base64 = base64.b64encode(file.read())
-    print(type(image_base64))
-    # image_base64 = base64.b64encode(file.read())
-    # image_base64 = base64.encodebytes(file.read())
-    print(image_base64)
     user_id = request.form['user_id']
     group_id = request.form['group_id']
     user_info = request.form['user_info']
@@ -104,12 +99,6 @@ def updateInfo():
 # 人脸更新
 @app.route('/updateInfo2', methods=["POST"])
 def updateInfo2():
-    # file = request.files['user_image']
-    # image_base64 = base64.b64encode(file.read())
-    # print(type(image_base64))
-    # image_base64 = base64.b64encode(file.read())
-    # image_base64 = base64.encodebytes(file.read())
-    # print(image_base64)
     user_id = request.form['user_id']
     image_base64 = request.form['user_image']
     group_id = request.form['group_id']
