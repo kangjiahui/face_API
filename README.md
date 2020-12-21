@@ -36,7 +36,7 @@ pip安装   `pip install dlib`
 输入输出详见 api.py 文档中的 face_get_info 方法  
 
 ### websocket负责图像帧实时传输
-start_server = websockets.serve(time, "10.20.50.163", 5678)
+start_server = websockets.serve(time, "10.20.50.163", 5678)   
 输入输出详见 api.py 文档中的 search_identity 方法
 
 ### api.py 文档
