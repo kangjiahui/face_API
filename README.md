@@ -18,22 +18,28 @@ pip安装   `pip install dlib`
 运行`websocket_serve.py`  
 ### 本服务端已具备人脸注册、信息删除或修改、已注册人脸信息查询等功能。前端调用对应接口即可
 
-## flask 服务负责数据库增删改查功能
-人脸信息注册  
+### flask 服务负责数据库增删改查功能
+#### 人脸信息注册  
 @app.route('/uploadInfo', methods=["POST"])  
-人脸更新（有图片更新）  
+输入输出详见 api.py 文档中的 face_register 方法  
+#### 人脸更新（有图片更新）  
 @app.route('/updateInfo', methods=["POST"])  
-人脸更新（无图片）  
+输入输出详见 api.py 文档中的 face_update 方法  
+#### 人脸更新（无图片）  
 @app.route('/updateInfo2', methods=["POST"])  
-人脸删除  
+输入输出详见 api.py 文档中的 face_update 方法  
+#### 人脸删除  
 @app.route('/deleteInfo', methods=["POST"])  
-人脸信息获取  
+输入输出详见 api.py 文档中的 face_delete 方法  
+#### 人脸信息获取  
 @app.route('/getAllInfo', methods=["POST"])  
+输入输出详见 api.py 文档中的 face_get_info 方法  
 
-## websocket负责图像帧实时传输
-start_server = websockets.serve(time, "10.20.50.163", 5678)
+### websocket负责图像帧实时传输
+start_server = websockets.serve(time, "10.20.50.163", 5678)   
+输入输出详见 api.py 文档中的 search_identity 方法
 
-## api.py 文档
+### api.py 文档
 Help on module modules.utils.api in modules.utils:
 
 NAME
