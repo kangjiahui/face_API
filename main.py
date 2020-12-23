@@ -61,10 +61,13 @@ if __name__ == '__main__':
     # new_database()
     # image = cv2.imread("register_img/t2.jpg")
     # image_64 = image_to_base64(image)
-    # face_register({"user_id": "10097508", "group_id": "master", "user_info": "童随兵", "user_image": image_64})
-    # face_update({"user_id": "10098441", "group_id": "staff", "user_info": "康佳慧", "user_image": image_64})
+    # face_register({"user_id": "10097508", "group_id": "master", "gender": "男", "user_info": "童随兵", "user_image": image_64})
+    # face_register({"user_id": "10098440", "group_id": "staff", "gender": "女", "user_info": "康佳慧", "user_image": image_64})
+    # face_delete("10098440")
     # print(face_get_info())
     # result = search_identity(path='test.jpg')
     # print(result)
+
+    # print(help(api))
 
 

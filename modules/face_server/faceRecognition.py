@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
    File Name：     faceRecognition.py
-   Description :  wrapping code of face recognition into a class, instantiation occurs in modules/face_server/utils/api.py
+   Description :  wrapping for face recognition class, instantiation occurs in modules/face_server/utils/api.py
    Author :       KangJiaHui
    date：         2020/11/26
 """
@@ -51,7 +51,7 @@ def cv2_img_add_text(img, text, left, top, text_color=(255, 255, 0), text_size=3
         img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     draw = ImageDraw.Draw(img)
     font_text = ImageFont.truetype(
-        "fonts/simsun.ttc", text_size, encoding="utf-8")
+        "modules/face_server/fonts/simsun.ttc", text_size, encoding="utf-8")
     draw.text((left, top - 30), text, text_color, font=font_text)
     return cv2.cvtColor(np.asarray(img), cv2.COLOR_RGB2BGR)
 
@@ -87,13 +87,14 @@ class FaceRecognition(object):
         """
         # 创建pythonBD数据库
         self.cursor.execute('drop DATABASE if EXISTS face_rec;')
-        self.cursor.execute('CREATE DATABASE face_rec;')
+        self.cursor.execute('CREATE DATABASE face_rec CHARACTER SET utf8 COLLATE utf8_general_ci;')
         self.cursor.execute('use face_rec;')
         self.cursor.execute('drop table if EXISTS users;')
         print('========Database "face_rec" created!========')
         sql = """CREATE TABLE users(
         user_id VARCHAR(20) not null PRIMARY KEY,
         group_id VARCHAR(100),
+        gender VARCHAR(20),
         user_info VARCHAR(100) not null,
         face_feature blob not null,
         image_path VARCHAR(100) not null,
@@ -106,13 +107,14 @@ class FaceRecognition(object):
         """
         Registers only one picture.
         :param _image_base64: image encoded in base64
-        :param _info: a diction E.X.:{"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧"}
+        :param _info: a diction E.X.:{"user_id": "10098440", "group_id": "staff", "gender": "女", "user_info": "康佳慧"}
         :return: None, results will be written into mysql database
         """
         self.cursor.execute('use face_rec;')
         image = base64_to_image(_image_base64)
         user_id = _info["user_id"]
         group_id = _info["group_id"]
+        gender = _info["gender"]
         user_info = _info["user_info"]
         image_path = os.path.join(os.getcwd(), 'register_img', user_id + ".jpg")
         cv2.imwrite(image_path, image)
@@ -125,9 +127,10 @@ class FaceRecognition(object):
         face_chip = dlib.get_face_chip(image, shape)
         face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip)).tostring()
 
-        statement = """INSERT INTO users (user_id, group_id, user_info, face_feature, image_path, latest_modify_time) 
-                    VALUES (%s, %s, %s, %s, %s, NOW());"""
-        self.cursor.execute(statement, (user_id, group_id, user_info, face_descriptor, image_path))
+        statement = """INSERT INTO users 
+                    (user_id, group_id, gender, user_info, face_feature, image_path, latest_modify_time) 
+                    VALUES (%s, %s, %s, %s, %s, %s, NOW());"""
+        self.cursor.execute(statement, (user_id, group_id, gender, user_info, face_descriptor, image_path))
         self.conn.commit()
 
     def face_delete(self, user_id):
@@ -145,13 +148,14 @@ class FaceRecognition(object):
         """
         Reregisters only one picture.
         :param _image_base64: image encoded in base64
-        :param _info: a diction E.X.:{"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧"}
+        :param _info: a diction E.X.:{"user_id": "10098440", "group_id": "staff", "gender": "女", "user_info": "康佳慧"}
         :return: None, results will be written into mysql database
         """
         self.cursor.execute('use face_rec;')
         image = base64_to_image(_image_base64)
         user_id = _info["user_id"]
         group_id = _info["group_id"]
+        gender = _info["gender"]
         user_info = _info["user_info"]
         image_path = os.path.join(os.getcwd(), 'register_img', user_id + ".jpg")
         cv2.imwrite(image_path, image)
@@ -163,9 +167,9 @@ class FaceRecognition(object):
         shape = self.sp(image, faces[0])
         face_chip = dlib.get_face_chip(image, shape)
         face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip)).tostring()
-        statement = """update users set group_id=%s, user_info=%s, face_feature=%s, image_path=%s, 
+        statement = """update users set group_id=%s, gender=%s, user_info=%s, face_feature=%s, image_path=%s, 
         latest_modify_time=NOW() where user_id=%s;"""
-        self.cursor.execute(statement, (group_id, user_info, face_descriptor, image_path, user_id))
+        self.cursor.execute(statement, (group_id, gender, user_info, face_descriptor, image_path, user_id))
         self.conn.commit()
 
     def face_get_info(self, page_num, max_rows):
@@ -174,18 +178,19 @@ class FaceRecognition(object):
         :param page_num: int, page index
         :param max_rows: int, how many registered faces in one page
         :return:list[dict], e.x.
-        [{"userID": "10098440", "userGroup": "staff", "userName": "康佳慧",
+        [{"userID": "10098440", "userGroup": "staff", "userGender":"女", "userName": "康佳慧",
         "latest_modify_time": "2020-12-15 15:15:41", "userIMG": base64_image}, ]
         """
         self.cursor.execute('use face_rec;')
         page_start = (page_num - 1) * max_rows
-        statement = """SELECT user_id, group_id, user_info, image_path, latest_modify_time from users limit %s, %s;"""
+        statement = """SELECT user_id, group_id, gender, user_info, image_path, latest_modify_time 
+                    from users limit %s, %s;"""
         self.cursor.execute(statement, (page_start, max_rows))
         user_data = self.cursor.fetchall()
         result = []
-        for user_id, group_id, user_info, image_path, latest_modify_time in user_data:
-            result.append({"userID": user_id, "userGroup": group_id, "userName": user_info,
-                           "latest_modify_time": str(latest_modify_time),
+        for user_id, group_id, gender, user_info, image_path, latest_modify_time in user_data:
+            result.append({"userID": user_id, "userGroup": group_id, "userGender": gender,
+                           "userName": user_info, "latest_modify_time": str(latest_modify_time),
                            "userIMG": image_to_base64(cv2.imread(image_path))})
         return result
 
@@ -195,9 +200,12 @@ class FaceRecognition(object):
         :param image: numpy.ndarray
         :param path: str, indicates an image
         :param thresh: distance between face and matched face should be smaller than thresh
-        :return:list[dict], in format of [{"box": bbox, "name": name, "distance": distance}, ]
+        :return:list[dict], e.x.
+                [{"user_id": user_id, "group_id": group_id, "gender": gender, "user_info": user_info,
+                "box": [216, 118, 439, 341], "distance": 0.35670, "image": base64_image}, ]
         """
         self.cursor.execute('use face_rec;')
+        self.cursor.execute('FLUSH PRIVILEGES')
         if path:
             image = cv2.imread(path)  # if path and image coexist, then path will cover image
         faces = self.detector(image, 1)
@@ -219,12 +227,12 @@ class FaceRecognition(object):
                     distance = dist_tmp
                     matched_id = user_id
             if distance < thresh:
-                statement = """SELECT user_id, group_id, user_info from users where user_id=%s;"""
+                statement = """SELECT user_id, group_id, gender, user_info, image_path from users where user_id=%s;"""
                 self.cursor.execute(statement, matched_id)
                 user_data = self.cursor.fetchall()
-                for user_id, group_id, user_info in user_data:
-                    result.append({"user_id": user_id, "group_id": group_id, "user_info": user_info,
-                                   "box": bbox, "distance": distance})
+                for user_id, group_id, gender, user_info, image_path in user_data:
+                    result.append({"user_id": user_id, "group_id": group_id, "gender": gender, "user_info": user_info,
+                                   "box": bbox, "distance": distance, "image": image_to_base64(cv2.imread(image_path))})
                     cv2.rectangle(image, (int(face.left()), int(face.top())), (int(face.right()), int(face.bottom())),
                                   (0, 255, 255), 2)
                     image = cv2_img_add_text(image, user_info, int(face.left()), int(face.top()))

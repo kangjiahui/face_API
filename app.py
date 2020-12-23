@@ -1,5 +1,6 @@
 import base64
 from flask import Flask, request, jsonify
+from flask_socketio import SocketIO, emit
 from modules.utils.api import *
 from flask_cors import CORS
 from multiprocessing import Process, Queue
@@ -8,6 +9,7 @@ import cv2
 
 app = Flask(__name__)
 CORS(app, resources=r'/*')
+socketio = SocketIO(app)
 # q = Queue(3)
 # print(f"q.id={id(q)}")
 
@@ -44,6 +46,11 @@ def show_in_video(q_):
 # t1.start()
 
 
+@socketio.on('my event', namespace='/test')
+def test_message(message):
+    emit('my response', {'data': message['data']})
+
+
 # 人脸识别运行
 @app.route('/getImgFlow', methods=["GET"])
 def face_recog():
@@ -73,9 +80,25 @@ def uploadInfo():
     print(image_base64)
     user_id = request.form['user_id']
     group_id = request.form['group_id']
+    gender = request.form['gender']
     user_info = request.form['user_info']
     print("data received!")
-    input_data = {"user_id": user_id, "group_id": group_id, "user_info": user_info, "user_image": image_base64}
+    input_data = {"user_id": user_id, "group_id": group_id, "gender": gender, "user_info": user_info, "user_image": image_base64}
+    print(input_data)
+    face_register(input_data)
+    return '1'
+
+
+# 人脸信息注册
+@app.route('/uploadInfo2', methods=["POST"])
+def uploadInfo2():
+    image_base64 = request.form['user_image']
+    user_id = request.form['user_id']
+    group_id = request.form['group_id']
+    gender = request.form['gender']
+    user_info = request.form['user_info']
+    print("data received!")
+    input_data = {"user_id": user_id, "group_id": group_id, "gender": gender, "user_info": user_info, "user_image": image_base64}
     print(input_data)
     face_register(input_data)
     return '1'
@@ -88,9 +111,10 @@ def updateInfo():
     image_base64 = base64.b64encode(file.read())
     user_id = request.form['user_id']
     group_id = request.form['group_id']
+    gender = request.form['gender']
     user_info = request.form['user_info']
     print("data received!")
-    input_data = {"user_id": user_id, "group_id": group_id, "user_info": user_info, "user_image": image_base64}
+    input_data = {"user_id": user_id, "group_id": group_id, "gender": gender, "user_info": user_info, "user_image": image_base64}
     print(input_data)
     face_update(input_data)
     return '1'
@@ -102,9 +126,10 @@ def updateInfo2():
     user_id = request.form['user_id']
     image_base64 = request.form['user_image']
     group_id = request.form['group_id']
+    gender = request.form['gender']
     user_info = request.form['user_info']
     print("data received!")
-    input_data = {"user_id": user_id, "group_id": group_id, "user_info": user_info, "user_image": image_base64}
+    input_data = {"user_id": user_id, "group_id": group_id, "gender": gender, "user_info": user_info, "user_image": image_base64}
     print(input_data)
     face_update(input_data)
     return '1'
@@ -122,7 +147,6 @@ def deleteInfo():
 # 人脸信息获取
 @app.route('/getAllInfo', methods=["POST"])
 def getAllInfo():
-    print("Here get info!===============")
     try:
         position = request.form['position']
         print(f"data received! Position={position}")
