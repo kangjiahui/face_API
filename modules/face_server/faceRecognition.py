@@ -205,14 +205,16 @@ class FaceRecognition(object):
                 "box": [216, 118, 439, 341], "distance": 0.35670, "image": base64_image}, ]
         """
         self.cursor.execute('use face_rec;')
-        self.cursor.execute('FLUSH PRIVILEGES')
         if path:
             image = cv2.imread(path)  # if path and image coexist, then path will cover image
+        image_68 = image.copy()
         faces = self.detector(image, 1)
         result = []
         for face in faces:
             bbox = [int(face.left()), int(face.top()), int(face.right()), int(face.bottom())]
             shape = self.sp(image, face)
+            for point in shape.parts():
+                cv2.circle(image_68, (point.x, point.y), 1, (0, 255, 255), 2)
             face_chip = dlib.get_face_chip(image, shape)
             face_descriptor = np.array(self.facerec.compute_face_descriptor(face_chip))
             # print(face_descriptor)
@@ -236,8 +238,13 @@ class FaceRecognition(object):
                     cv2.rectangle(image, (int(face.left()), int(face.top())), (int(face.right()), int(face.bottom())),
                                   (0, 255, 255), 2)
                     image = cv2_img_add_text(image, user_info, int(face.left()), int(face.top()))
+            else:
+                cv2.rectangle(image, (int(face.left()), int(face.top())), (int(face.right()), int(face.bottom())),
+                              (0, 0, 255), 2)
+                image = cv2_img_add_text(image, "未注册", int(face.left()), int(face.top()), text_color=(255, 0, 0))
         encoded_img = image_to_base64(image)
-        return result, encoded_img
+        encoded_img_key = image_to_base64(image_68)
+        return result, encoded_img, encoded_img_key
 
     def release(self):
         self.cursor.close()  # 先关闭游标
