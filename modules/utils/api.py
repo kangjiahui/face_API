@@ -16,7 +16,8 @@ print("FaceRcognition created!")
 def face_register(input_dict):
     """
     Registers only one picture.
-    :param input_dict: e.x. {"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧", "user_image": "……"}
+    :param input_dict:
+        e.x. {"user_id": "10098440", "group_id": "staff", "gender": "女", "user_info": "康佳慧", "user_image": base64_image}
     :return: None, results will be written into database.
     """
     try:
@@ -50,7 +51,7 @@ def face_delete(user_id):
 def face_update(input_dict):
     """
     Update exist face_info.
-    :param input_dict: e.x. {"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧", "user_image": "……"}
+    :param input_dict: e.x. {"user_id": "10098440", "group_id": "staff", "user_info": "康佳慧", "user_image": base64_image}
     :return: None, results will be written into data_path.
     """
     try:
@@ -70,7 +71,7 @@ def face_get_info(page_num=1, max_rows=100):
     :param page_num: int, page index
     :param max_rows: int, how many registered faces in one page
     :return: dict, e.x. {"result": 0, "message": "SUCCESS",
-                        "user_data": [{"userID": "10098440", "userGroup": "staff", "userName": "康佳慧",
+                        "user_data": [{"userID": "10098440", "userGroup": "staff", "userGender": "女", "userName": "康佳慧",
                                         "latest_modify_time": "2020-12-15 15:15:41", "userIMG": base64_image}, ]}
     """
     try:
@@ -91,16 +92,17 @@ def search_identity(image=None, path=None, thresh=0.4):
     :param path: str, indicates an image
     :param thresh: distance between face and matched face should be smaller than thresh
     :return:dict, in format of
-            {"result": 0, "message": "SUCCESS", "image": encoded_base64_img,
-            "faces":[{"box": bbox, "name": name, "distance": distance}, ]}
+            {"result": 0, "message": "SUCCESS", "image": encoded_base64_img, "image_key": encoded_base64_img,
+            "faces":[{"user_id": "10098440", "group_id": "staff", "gender": "女", "user_info": "康佳慧",
+                    "box": [216, 118, 439, 341], "distance": 0.35670, "image": base64_image}, ]}
     """
     try:
         if path:
-            faces_info, encoded_img = face.search_identity(path=path, thresh=thresh)
+            faces_info, encoded_img, encoded_img_key = face.search_identity(path=path, thresh=thresh)
         else:
-            faces_info, encoded_img = face.search_identity(image=image, thresh=thresh)
-        result_json = json.dumps({"result": 0, "message": "SUCCESS", "image": encoded_img, "faces": faces_info},
-                                 ensure_ascii=False)
+            faces_info, encoded_img, encoded_img_key = face.search_identity(image=image, thresh=thresh)
+        result_json = json.dumps({"result": 0, "message": "SUCCESS", "image": encoded_img,
+                                  "image_key": encoded_img_key, "faces": faces_info}, ensure_ascii=False)
     except Exception as e:
         print(e)
         msg = str(e)
@@ -121,4 +123,3 @@ def new_database():
         msg = str(e)
         result_json = json.dumps({"result": -1, "message": msg})
     return result_json
-

@@ -40,6 +40,7 @@ def show_in_video():
         result = search_identity(image=img)
         result = json.loads(result)
         image = base64_to_image(result["image"])
+        image_key = base64_to_image(result["image_key"])
 
         cv2.namedWindow("face_recognition", 0)
         cv2.resizeWindow('face_recognition', 1024, 768)
@@ -59,12 +60,15 @@ if __name__ == '__main__':
     show_in_video()
 
     # new_database()
-    # image = cv2.imread("register_img/t2.jpg")
+    # image = cv2.imread("register_img/kang.jpg")
     # image_64 = image_to_base64(image)
-    # face_register({"user_id": "10097508", "group_id": "master", "user_info": "童随兵", "user_image": image_64})
-    # face_update({"user_id": "10098441", "group_id": "staff", "user_info": "康佳慧", "user_image": image_64})
+    # face_register({"user_id": "10097508", "group_id": "master", "gender": "男", "user_info": "童随兵", "user_image": image_64})
+    # face_register({"user_id": "10098440", "group_id": "staff", "gender": "女", "user_info": "康佳慧", "user_image": image_64})
+    # face_delete("10098440")
     # print(face_get_info())
     # result = search_identity(path='test.jpg')
     # print(result)
+
+    # print(help(api))
 
 
